@@ -16,6 +16,7 @@ import android.view.View;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Date;
 
 public class MainActivity<CSVLoader> extends AppCompatActivity {
 
@@ -24,7 +25,7 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
     //training data storage
     String[] actions = new String[1000];
     double[] pressures = new double[1000];
-    long[] startTimes = new long[1000];
+    long[] timeStamp = new long[1000];
     long[] endTimes = new long[1000];
     long[] durationTimes = new long[1000];
     int[] coordX = new int[1000];
@@ -32,6 +33,9 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
     double[] fingerSizes = new double[1000];
     double[] velocityXs = new double[1000];
     double[] velocityYs = new double[1000];
+    int[] touchIndices = new int[1000];
+
+    int touchIndex = 0;
 
     //test data storage
     double[] DURATIONS_STORAGE = new double[20];
@@ -46,8 +50,7 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
         myLayout.setOnTouchListener(new View.OnTouchListener() {
 
             //touch count
-            int touchID = 0;
-            int touchIndex = 0;
+            int moveIndex = 0;
             int testCount = 0;
 
             //finger size
@@ -59,6 +62,7 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
 
             //Time
             long startTime = 0;
+            long endTime = 0;
             long durationTime;
 
             //Pressure
@@ -83,13 +87,11 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
 
                 switch (event.getAction()){
                     case MotionEvent.ACTION_DOWN:
-                        //Count
-                        touchID++;
-                        touchIndex++;
+
 
                         //Size (finger dimensions)
                         fingerSize = event.getSize();
-                        fingerSizes[touchIndex] = fingerSize;
+                        fingerSizes[moveIndex] = fingerSize;
                         System.out.println("Finger size: " + fingerSize + " pixels");
 
                         //Velocity
@@ -104,29 +106,34 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
                         //Action Check
                         view.performClick();
                         System.out.println("Touch Event: Action Down");
-                        actions[touchIndex] = "Down";
+                        actions[moveIndex] = "Down";
 
                         //Location
                         x = (int) event.getX();
-                        coordX[touchIndex] = x;
+                        coordX[moveIndex] = x;
                         y = (int) event.getY();
-                        coordY[touchIndex] = y;
+                        coordY[moveIndex] = y;
                         System.out.println("X and Y Coordinates: ( " + x + " , " + y + " )");
 
                         //Time
-                        startTime = System.nanoTime();
-                        startTimes[touchID] = startTime / 1000000;
+//                        startTime = System.nanoTime();
+//                        startTimes[touchID] = startTime / 1000000;
+                        startTime = System.currentTimeMillis();
+                        timeStamp[moveIndex] = System.currentTimeMillis();
                         System.out.println("Start Time: " + startTime);
 
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
-                        pressures[touchIndex] = currPressure;
+                        pressures[moveIndex] = currPressure;
                         System.out.println("Pressure Action Down: " + currPressure);
+
+                        //Count
+                        touchIndices[moveIndex] = touchIndex;
+                        moveIndex++;
+
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        //Count
-                        touchID++;
-                        touchIndex++;
+
 
                         //Velocity
                         velTracker.addMovement(event);
@@ -135,51 +142,51 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
                         velTracker.computeCurrentVelocity(UNITS, MAX_VELOCITY);
                         velocityX = velTracker.getXVelocity(pointer);
                         velocityY = velTracker.getYVelocity(pointer);
-                        velocityXs[touchIndex] = velocityX;
-                        velocityYs[touchIndex] = velocityY;
+                        velocityXs[moveIndex] = velocityX;
+                        velocityYs[moveIndex] = velocityY;
                         System.out.println("Velocity X: " + velocityX);
                         System.out.println("Velocity Y: " + velocityY);
 
                         //Action Check
                         System.out.println("Touch Event: Action Move");
-                        actions[touchIndex] = "Move";
+                        actions[moveIndex] = "Move";
 
                         //Size (finger dimensions)
                         fingerSize = event.getSize();
-                        fingerSizes[touchIndex] = fingerSize;
+                        fingerSizes[moveIndex] = fingerSize;
                         System.out.println("Finger size: " + fingerSize + " pixels");
 
                         //Location
                         x = (int) event.getX();
-                        coordX[touchIndex] = x;
+                        coordX[moveIndex] = x;
                         y = (int) event.getY();
-                        coordY[touchIndex] = y;
+                        coordY[moveIndex] = y;
                         System.out.println("X and Y Coordinates: ( " + x + " , " + y + " )");
 
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
                         System.out.println("Pressure Action Move: " + currPressure);
-                        pressures[touchIndex] = currPressure;
+                        pressures[moveIndex] = currPressure;
 
                         //Start time/end time fill ins
-                        startTimes[touchID] = startTime / 1000000;
+//                        startTimes[touchID] = startTime / 1000000;
+                        timeStamp[moveIndex] = System.currentTimeMillis();
                         System.out.println("Start Time: " + startTime);
+
+                        //Count
+                        touchIndices[moveIndex] = touchIndex;
+                        moveIndex++;
 
                         break;
                     case MotionEvent.ACTION_UP:
-                        //count
-                        testCount++;
-                        touchIndex++;
-                        touchID++;
-
                         //Action
-                        actions[touchIndex] = "Up";
+                        actions[moveIndex] = "Up";
 
                         //Location
                         x = (int) event.getX();
-                        coordX[touchIndex] = x;
+                        coordX[moveIndex] = x;
                         y = (int) event.getY();
-                        coordY[touchIndex] = y;
+                        coordY[moveIndex] = y;
                         System.out.println("X and Y Coordinates: ( " + x + " , " + y + " )");
 
                         //Action Check
@@ -187,14 +194,33 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
 
                         //Time
                         System.out.println("Start time check: " + startTime);
-                        durationTime = System.nanoTime() - startTime;
-                        startTimes[touchIndex] = startTime;
-                        durationTimes[touchIndex] = durationTime / 1000000;
-                        endTimes[touchIndex] = (durationTime + startTime) / 1000000;
-                        System.out.println("Duration of press: " + (durationTime / 1000000) + " Milliseconds");
+
+                        timeStamp[moveIndex] = System.currentTimeMillis();
+//                        durationTimes[touchIndex] = durationTime / 1000000;
+//                        endTimes[touchIndex] = (durationTime + startTime) / 1000000;
+//                        System.out.println("Duration of press: " + (durationTime / 1000000) + " Milliseconds");
+//
+//                        //Test Data Calls
+//                        DURATIONS_STORAGE[testCount] = (durationTime / 1000000);
+
+
+
+                        endTime = System.currentTimeMillis();
+                        durationTime = endTime - startTime;
+                        endTimes[moveIndex] = endTime;
+                        durationTimes[moveIndex] = durationTime;
+                        System.out.println("Duration of press: " + durationTime);
+
+                        //count
+                        touchIndices[moveIndex] = touchIndex;
+
+                        testCount++;
+                        moveIndex++;
+                        touchIndex++;
+
 
                         //Test Data Calls
-                        DURATIONS_STORAGE[testCount] = (durationTime / 1000000);
+                        DURATIONS_STORAGE[testCount] = durationTime;
 
                         break;
                     case MotionEvent.ACTION_CANCEL:
@@ -208,21 +234,21 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
 
     public void Export2CSV(View view){
         StringBuilder data = new StringBuilder();
-        int touchID = 0;
-        int touchIndex = 0;
+        int count = 0;
 
-        data.append("TouchID, TouchIndex, Action, startTime(Milliseconds), " +
+        data.append("TouchIndex, MoveIndex, Action, timeStamp(Milliseconds), " +
                 "endTime(Milliseconds), durationTime(Milliseconds), pressure, " +
                 "coordinates, touchSize(pixels), Velocity(X), Velocity(Y)\n");
 
         while (true){
-            data.append(touchID + "," + touchIndex + "," + actions[touchIndex] + "," + startTimes[touchIndex] + ","
-                    + endTimes[touchIndex] + "," + durationTimes[touchIndex] + " ," + pressures[touchIndex]
-                    + "," + "[" + coordX[touchIndex] + ":" + coordY[touchIndex] + "]" + "," + fingerSizes[touchIndex] + ","
-                    + velocityXs[touchIndex] + "," + velocityYs[touchIndex] + "\n");
-            touchID++;
-            touchIndex++;
-            if (actions[touchIndex] == null){
+            System.out.println(count);
+            data.append(touchIndices[count] + "," + count + "," + actions[count] + "," + timeStamp[count] + ","
+                    + endTimes[count] + "," + durationTimes[count] + " ," + pressures[count]
+                    + "," + "[" + coordX[count] + ":" + coordY[count] + "]" + "," + fingerSizes[count] + ","
+                    + velocityXs[count] + "," + velocityYs[count] + "\n");
+            count++;
+
+            if (actions[count] == null){
                 break;
             }
         }
@@ -259,8 +285,7 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
                 "STD_DEV(coordinateYSample), P_MAX_1(velocityXSample), P_MAX_2(velocityXSample), P_MIN(velocityXSample), " +
                 "STD_DEV(velocityXSample), P_MAX_1(velocityYSample), P_MAX_2(velocityYSample), P_MIN(velocityYSample), " +
                 "STD_DEV(velocityYSample)\n");
-        int touchID = 0;
-        int touchIndex = 0;
+        int count = 0;
         int i = 0;
         int testCount = 0;
 
@@ -273,17 +298,16 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
         double[] velocityYSample = new double[150];
 
         while (true){
-            if (actions[touchIndex] == "Down"){
-                while (actions[touchIndex] != "Up"){
+            if (actions[count] == "Down"){
+                while (actions[count] != "Up"){
                     //Selecting isolated gestures or 'swipes'
-                    pressureSample[i] = pressures[touchIndex];
-                    fingerSizeSample[i] = fingerSizes[touchIndex];
-                    coordinateXSample[i] = coordX[touchIndex];
-                    coordinateYSample[i] = coordY[touchIndex];
-                    velocityXSample[i] = velocityXs[touchIndex];
-                    velocityYSample[i] = velocityYs[touchIndex];
-                    touchID++;
-                    touchIndex++;
+                    pressureSample[i] = pressures[count];
+                    fingerSizeSample[i] = fingerSizes[count];
+                    coordinateXSample[i] = coordX[count];
+                    coordinateYSample[i] = coordY[count];
+                    velocityXSample[i] = velocityXs[count];
+                    velocityYSample[i] = velocityYs[count];
+                    count++;
                     i++;
                 }
                 testCount++;
@@ -303,9 +327,8 @@ public class MainActivity<CSVLoader> extends AppCompatActivity {
                                 StandardDeviation(velocityYSample) + "\n");
                 i = 0;
             }
-            touchID++;
-            touchIndex++;
-            if (actions[touchIndex] == null){
+            count++;
+            if (actions[count] == null){
                 break;
             }
         }
