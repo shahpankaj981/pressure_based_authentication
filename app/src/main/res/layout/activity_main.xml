@@ -53,4 +53,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <TextView
+        android:id="@+id/swipeNumberText"
+        android:layout_width="354dp"
+        android:layout_height="54dp"
+        android:autoText="false"
+        android:ems="13"
+        android:inputType="textPersonName"
+        android:text="Swipes completed: 0 "
+        android:textColor="#FFC82E"
+        android:textSize="24sp"
+        android:textStyle="bold|italic"
+        app:layout_constraintBottom_toBottomOf="@+id/editTextTextPersonName"
+        app:layout_constraintEnd_toEndOf="@+id/editTextTextPersonName"
+        app:layout_constraintStart_toStartOf="@+id/editTextTextPersonName"
+        app:layout_constraintTop_toTopOf="parent"></TextView>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

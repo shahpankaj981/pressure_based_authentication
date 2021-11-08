@@ -14,11 +14,13 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -28,18 +30,24 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
+import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.J48;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.SerializationHelper;
 import weka.core.converters.ArffSaver;
 import weka.core.converters.CSVLoader;
 import weka.core.converters.ConverterUtils;
@@ -47,7 +55,6 @@ import weka.experiment.InstanceQuery;
 import weka.filters.unsupervised.attribute.Remove;
 
 public class MainActivity extends AppCompatActivity {
-
     private VelocityTracker velTracker = null;
 
     //training data storage
@@ -62,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
     double[] velocityXs = new double[1000];
     double[] velocityYs = new double[1000];
     int[] touchIndices = new int[1000];
+    Classifier classifier = null;
+    TextView swipe = null;
 
     int touchIndex = 0;
 
@@ -74,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         ConstraintLayout myLayout = findViewById(R.id.main_layout);
-        Log.e("Constructor", "setup");
+        swipe = findViewById(R.id.swipeNumberText);
 
         myLayout.setOnTouchListener(new View.OnTouchListener() {
 
@@ -251,6 +260,8 @@ public class MainActivity extends AppCompatActivity {
                         //Test Data Calls
                         DURATIONS_STORAGE[testCount] = durationTime;
 
+                        swipe.setText("Swipes Completed: "+ testCount);
+
                         break;
                     case MotionEvent.ACTION_CANCEL:
                         velTracker.recycle();
@@ -258,9 +269,25 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return true;
             }
+
         });
     }
 
+    public void resetData()
+    {
+        //training data storage
+        actions = new String[1000];
+        pressures = new double[1000];
+        timeStamp = new long[1000];
+        endTimes = new long[1000];
+        durationTimes = new long[1000];
+        coordX = new int[1000];
+        coordY = new int[1000];
+        fingerSizes = new double[1000];
+        velocityXs = new double[1000];
+        velocityYs = new double[1000];
+        touchIndices = new int[1000];
+    }
 
     public void Export2CSV(View view){
         StringBuilder data = new StringBuilder();
@@ -371,7 +398,7 @@ public class MainActivity extends AppCompatActivity {
         Context context = getApplicationContext();
 
         try {
-            FileOutputStream out = openFileOutput("testData1.arff", Context.MODE_PRIVATE);
+            FileOutputStream out = openFileOutput("trainData.arff", Context.MODE_PRIVATE);
             out.write(data.toString().getBytes());
             out.close();
         } catch (Exception e){
@@ -404,6 +431,55 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void train(View view){
+        //save data to arff file
+        saveArffFile();
+
+        //train model
+        FileInputStream fis = null;
+        try {
+            fis = openFileInput("trainData.arff");
+            InputStreamReader isr = new InputStreamReader(fis);
+            BufferedReader breader = new BufferedReader(isr);
+
+            Instances train = new Instances(breader);
+            train.setClassIndex(train.numAttributes()-1);
+            breader.close();
+
+            J48 model = new J48();
+            model.buildClassifier(train);
+            OutputStream os = openFileOutput("j48.model", Context.MODE_PRIVATE);
+            ObjectOutputStream out2 = new ObjectOutputStream(os);
+            out2.writeObject(model);
+            out2.close();
+
+            Evaluation eval = new Evaluation(train);
+            eval.crossValidateModel(model, train, 4, new Random(1));
+
+            System.out.println(eval.toSummaryString("\nResults\n========\n", true));
+            System.out.println(eval.fMeasure(1) + " " + eval.precision(1) + " " + eval.recall(1));
+
+            //load model
+            loadModel();
+            swipe.setText("Training Completed. Please Swipe now to test.");
+//            resetData();
+            Intent intent = new Intent(this, Test.class);
+            startActivity(intent);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NullPointerException e) {
+            Log.e("hello world", "Null");
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        readDataArffFile();
+    }
+
+    public void saveArffFile()
+    {
         //Call Methods
         Log.e("model generation", "process started");
         StringBuilder data = new StringBuilder();
@@ -452,48 +528,41 @@ public class MainActivity extends AppCompatActivity {
         Context context = getApplicationContext();
 
         try {
-            FileOutputStream out = openFileOutput("testData1.arff", Context.MODE_PRIVATE);
+            FileOutputStream out = openFileOutput("trainData.arff", Context.MODE_PRIVATE);
             out.write(data.toString().getBytes());
             out.close();
         } catch (Exception e){
             e.printStackTrace();
         }
+    }
 
-        ConverterUtils.DataSource source = null;
-        FileInputStream fis = null;
-
-
-
+    public void loadModel()
+    {
+        InputStream is = null;
         try {
-            fis = openFileInput("testData1.arff");
-            InputStreamReader isr = new InputStreamReader(fis);
-            BufferedReader breader = new BufferedReader(isr);
-
-            Instances train = new Instances(breader);
-            train.setClassIndex(train.numAttributes()-1);
-            breader.close();
-
-            J48 nB = new J48();
-            nB.buildClassifier(train);
-            Evaluation eval = new Evaluation(train);
-            eval.crossValidateModel(nB, train, 4, new Random(1));
-
-            System.out.println(eval.toSummaryString("\nResults\n========\n", true));
-            System.out.println(eval.fMeasure(1) + " " + eval.precision(1) + " " + eval.recall(1));
+            is = openFileInput("j48.model");
+            ObjectInputStream is2 = new ObjectInputStream(is);
+            Object ob = is2.readObject();
+            is2.close();
+            System.out.println(is2.toString());
+            classifier = (Classifier) ob;
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (NullPointerException e) {
-            Log.e("hello world", "Null");
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    public void readDataArffFile()
+    {
         FileInputStream fis2 = null;
         try {
-            fis2 = openFileInput("testData1.arff");
+            fis2 = openFileInput("trainData.arff");
             InputStreamReader isr = new InputStreamReader(fis2);
             BufferedReader br = new BufferedReader(isr);
             StringBuilder sb = new StringBuilder();
