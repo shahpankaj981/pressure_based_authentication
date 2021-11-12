@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Gradle: ./app/libs/LibSVM-1.0.10.jar">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/app/libs/LibSVM-1.0.10.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
