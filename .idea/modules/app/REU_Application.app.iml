@@ -59,6 +59,8 @@
     <orderEntry type="library" scope="TEST" name="Gradle: androidx.arch.core:core-runtime:2.0.0@aar" level="project" />
     <orderEntry type="library" scope="TEST" name="Gradle: androidx.test.espresso:espresso-idling-resource:3.3.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: ./app/libs/wekaSTRIPPED.jar" level="project" />
+    <orderEntry type="library" name="Gradle: ./app/libs/LibSVM-1.0.10.jar" level="project" />
+    <orderEntry type="library" name="Gradle: ./app/libs/libsvm-3.25.jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.collection:collection:1.1.0" level="project" />
     <orderEntry type="library" name="Gradle: androidx.lifecycle:lifecycle-common:2.3.1" level="project" />
     <orderEntry type="library" name="Gradle: androidx.arch.core:core-common:2.1.0" level="project" />

@@ -43,6 +43,7 @@ import java.util.Random;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.functions.LibSVM;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.J48;
 import weka.core.Instance;
@@ -445,7 +446,11 @@ public class MainActivity extends AppCompatActivity {
             train.setClassIndex(train.numAttributes()-1);
             breader.close();
 
-            J48 model = new J48();
+            LibSVM model = new LibSVM();
+            String options = ( "-S 2 -K 0 -D 3 -G 0.0 -R 0.0 -N 0.5 -M 40.0 -C 1.0 -E 0.001 -P 0.1" );
+            String[] optionsArray = options.split( " " );
+            model.setOptions( optionsArray );
+
             model.buildClassifier(train);
             OutputStream os = openFileOutput("j48.model", Context.MODE_PRIVATE);
             ObjectOutputStream out2 = new ObjectOutputStream(os);
@@ -453,13 +458,13 @@ public class MainActivity extends AppCompatActivity {
             out2.close();
 
             Evaluation eval = new Evaluation(train);
-            eval.crossValidateModel(model, train, 4, new Random(1));
+            eval.crossValidateModel(model, train, 2, new Random(1));
 
             System.out.println(eval.toSummaryString("\nResults\n========\n", true));
-            System.out.println(eval.fMeasure(1) + " " + eval.precision(1) + " " + eval.recall(1));
+            System.out.println(eval.fMeasure(0) + " " + eval.precision(0) + " " + eval.recall(0));
 
             //load model
-            loadModel();
+//            loadModel();
             swipe.setText("Training Completed. Please Swipe now to test.");
 //            resetData();
             Intent intent = new Intent(this, Test.class);
@@ -488,7 +493,7 @@ public class MainActivity extends AppCompatActivity {
                 "\n" +
                 "   @ATTRIBUTE pressure_max_1  NUMERIC\n" +
                 "   @ATTRIBUTE pressure_max_2   NUMERIC\n" +
-                "   @ATTRIBUTE class        {isPankaj,isNotPankaj}\n\n" +
+                "   @ATTRIBUTE class        {isPankaj}\n\n" +
                 "@DATA\n");
         int count = 0;
         int i = 0;
