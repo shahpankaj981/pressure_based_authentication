@@ -36,6 +36,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -59,19 +60,21 @@ public class MainActivity extends AppCompatActivity {
     private VelocityTracker velTracker = null;
 
     //training data storage
-    String[] actions = new String[1000];
-    double[] pressures = new double[1000];
-    long[] timeStamp = new long[1000];
-    long[] endTimes = new long[1000];
-    long[] durationTimes = new long[1000];
-    int[] coordX = new int[1000];
-    int[] coordY = new int[1000];
-    double[] fingerSizes = new double[1000];
-    double[] velocityXs = new double[1000];
-    double[] velocityYs = new double[1000];
-    int[] touchIndices = new int[1000];
+    String[] actions = new String[10000];
+    double[] pressures = new double[10000];
+    long[] timeStamp = new long[10000];
+    long[] endTimes = new long[10000];
+    long[] durationTimes = new long[10000];
+    int[] coordX = new int[10000];
+    int[] coordY = new int[10000];
+    double[] fingerSizes = new double[10000];
+    double[] velocityXs = new double[10000];
+    double[] velocityYs = new double[10000];
+    int[] touchIndices = new int[10000];
     Classifier classifier = null;
     TextView swipe = null;
+
+    double[][] data_array = new double[10][25];
 
     int touchIndex = 0;
 
@@ -90,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
 
             //touch count
             int moveIndex = 0;
+            int newIndex = 0;
             int testCount = 0;
 
             //finger size
@@ -164,11 +168,15 @@ public class MainActivity extends AppCompatActivity {
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
                         pressures[moveIndex] = currPressure;
+                        data_array[testCount][newIndex] = currPressure;
+//                        data_array[testCount][25+newIndex] = fingerSize;
+//                        data_array[testCount][newIndex] = fingerSize;
                         System.out.println("Pressure Action Down: " + currPressure);
 
                         //Count
                         touchIndices[moveIndex] = touchIndex;
                         moveIndex++;
+                        newIndex++;
 
                         break;
                     case MotionEvent.ACTION_MOVE:
@@ -205,7 +213,9 @@ public class MainActivity extends AppCompatActivity {
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
                         System.out.println("Pressure Action Move: " + currPressure);
-                        pressures[moveIndex] = currPressure;
+                        data_array[testCount][newIndex] = currPressure;
+//                        data_array[testCount][25+newIndex] = fingerSize;
+//                        data_array[testCount][newIndex] = fingerSize;
 
                         //Start time/end time fill ins
 //                        startTimes[touchID] = startTime / 1000000;
@@ -215,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
                         //Count
                         touchIndices[moveIndex] = touchIndex;
                         moveIndex++;
+                        newIndex++;
 
                         break;
                     case MotionEvent.ACTION_UP:
@@ -257,11 +268,17 @@ public class MainActivity extends AppCompatActivity {
                         moveIndex++;
                         touchIndex++;
 
+//                        Arrays.fill(pressure_data_array[testCount], 0.0);
+
 
                         //Test Data Calls
                         DURATIONS_STORAGE[testCount] = durationTime;
 
                         swipe.setText("Swipes Completed: "+ testCount);
+                        System.out.println("index: "+newIndex);
+                        System.out.println("new pressures length: "+ data_array[testCount].length);
+
+                        newIndex = 0;
 
                         break;
                     case MotionEvent.ACTION_CANCEL:
@@ -345,7 +362,7 @@ public class MainActivity extends AppCompatActivity {
                 "STD_DEV(coordinateYSample), P_MAX_1(velocityXSample), P_MAX_2(velocityXSample), P_MIN(velocityXSample), " +
                 "STD_DEV(velocityXSample), P_MAX_1(velocityYSample), P_MAX_2(velocityYSample), P_MIN(velocityYSample), " +
                 "STD_DEV(velocityYSample), Person\n");
-        data.append("P_MAX_1(pressure), Person\n");
+//        data.append("P_MAX_1(pressure), Person\n");
 
         int count = 0;
         int i = 0;
@@ -433,7 +450,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void train(View view){
         //save data to arff file
-        saveArffFile();
+//        saveArffFile();
+        saveSingleDataArffFile();
 
         //train model
         FileInputStream fis = null;
@@ -447,7 +465,7 @@ public class MainActivity extends AppCompatActivity {
             breader.close();
 
             LibSVM model = new LibSVM();
-            String options = ( "-S 2 -K 0 -D 3 -G 0.0 -R 0.0 -N 0.5 -M 40.0 -C 1.0 -E 0.001 -P 0.1" );
+            String options = ( "-S 2 -K 0 -D 3 -G 0.0 -R 0.0 -N 0.3 -M 40.0 -C 1.0 -E 0.001 -P 0.1" );
             String[] optionsArray = options.split( " " );
             model.setOptions( optionsArray );
 
@@ -483,6 +501,48 @@ public class MainActivity extends AppCompatActivity {
         readDataArffFile();
     }
 
+    public void saveSingleDataArffFile()
+    {
+        //Call Methods
+        Log.e("model generation", "process started");
+        StringBuilder data = new StringBuilder();
+        String head = "@RELATION gestures\n\n";
+
+        for(int i=1;i<=25;i++) {
+            head += "   @ATTRIBUTE data_"+i+"  NUMERIC\n";
+        }
+
+        head += "   @ATTRIBUTE class        {isPankaj}\n\n" +
+                "@DATA\n";
+        System.out.println("head  ------" +head);
+        data.append(head);
+        int count = 0;
+        int i = 0;
+        int testCount = 0;
+        for(int j=0; j<data_array.length; j++) {
+            String body = "";
+            double pressure_line[] = data_array[j];
+            for(int k=0;k<pressure_line.length;k++) {
+                double pres = pressure_line[k];
+                body += pres+",";
+
+            }
+            body += "isPankaj\n";
+            System.out.println("body  ------" +body);
+            data.append(body);
+        }
+
+        Context context = getApplicationContext();
+
+        try {
+            FileOutputStream out = openFileOutput("trainData.arff", Context.MODE_PRIVATE);
+            out.write(data.toString().getBytes());
+            out.close();
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
     public void saveArffFile()
     {
         //Call Methods
@@ -493,6 +553,15 @@ public class MainActivity extends AppCompatActivity {
                 "\n" +
                 "   @ATTRIBUTE pressure_max_1  NUMERIC\n" +
                 "   @ATTRIBUTE pressure_max_2   NUMERIC\n" +
+                "   @ATTRIBUTE pressure_min   NUMERIC\n" +
+                "   @ATTRIBUTE duration  NUMERIC\n" +
+                "   @ATTRIBUTE coordinate_x_max_1  NUMERIC\n" +
+                "   @ATTRIBUTE coordinate_x_max_2  NUMERIC\n" +
+                "   @ATTRIBUTE coordinate_x_min  NUMERIC\n" +
+                "   @ATTRIBUTE coordinate_y_max_1  NUMERIC\n" +
+                "   @ATTRIBUTE coordinate_y_max_2  NUMERIC\n" +
+                "   @ATTRIBUTE coordinate_y_min  NUMERIC\n" +
+
                 "   @ATTRIBUTE class        {isPankaj}\n\n" +
                 "@DATA\n");
         int count = 0;
@@ -500,12 +569,12 @@ public class MainActivity extends AppCompatActivity {
         int testCount = 0;
 
         //test data storage
-        double[] pressureSample = new double[150];
-        double[] fingerSizeSample = new double[150];
-        double[] coordinateXSample = new double[150];
-        double[] coordinateYSample = new double[150];
-        double[] velocityXSample = new double[150];
-        double[] velocityYSample = new double[150];
+        double[] pressureSample = new double[750];
+        double[] fingerSizeSample = new double[750];
+        double[] coordinateXSample = new double[750];
+        double[] coordinateYSample = new double[750];
+        double[] velocityXSample = new double[750];
+        double[] velocityYSample = new double[750];
 
         while (true){
             if (actions[count] == "Down"){
@@ -521,7 +590,10 @@ public class MainActivity extends AppCompatActivity {
                     i++;
                 }
                 testCount++;
-                data.append(Array_Max_1(pressureSample) +"," + Array_Max_2(pressureSample) +",isPankaj\n");
+                data.append(Array_Max_1(pressureSample) + "," + Array_Max_2(pressureSample) + ","
+                        + Array_Min(pressureSample)+ "," + DURATIONS_STORAGE[testCount] + "," + Array_Max_1(coordinateXSample)
+                        + "," + Array_Max_2(coordinateXSample) + "," + Array_Min(coordinateXSample)+ "," + Array_Max_1(coordinateYSample)
+                        + "," + Array_Max_2(coordinateYSample)+ "," + Array_Min(coordinateYSample)+",isPankaj\n");
                 i = 0;
             }
             count++;
@@ -573,7 +645,7 @@ public class MainActivity extends AppCompatActivity {
             StringBuilder sb = new StringBuilder();
 
             String text;
-            Log.e("reading", "from file");
+//            Log.e("reading", "from file");
 
             while((text = br.readLine()) != null) {
                 sb.append(text).append("\n");

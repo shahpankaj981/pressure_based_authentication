@@ -28,6 +28,7 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Random;
 
 import weka.classifiers.Classifier;
@@ -434,12 +435,14 @@ public class Test extends AppCompatActivity {
     private VelocityTracker velTracker = null;
 
     //training data storage
-    double[] pressures = new double[100];
-    int[] coordX = new int[100];
-    int[] coordY = new int[100];
-    double[] fingerSizes = new double[100];
-    double[] velocityXs = new double[100];
-    double[] velocityYs = new double[100];
+    double[] pressures = new double[25];
+    double[] coordX = new double[500];
+    double[] coordY = new double[500];
+    double[] fingerSizes = new double[500];
+    double[] velocityXs = new double[500];
+    double[] velocityYs = new double[500];
+
+    double[] data_array = new double[25];
 
     Classifier classifier = null;
     TextView swipe = null;
@@ -535,6 +538,10 @@ public class Test extends AppCompatActivity {
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
                         pressures[moveIndex] = currPressure;
+                        data_array[moveIndex] = currPressure;
+//                        data_array[25+moveIndex] = fingerSize;
+//                        data_array[moveIndex] = fingerSize;
+
                         System.out.println("Pressure Action Down: " + currPressure);
 
                         moveIndex++;
@@ -572,7 +579,9 @@ public class Test extends AppCompatActivity {
                         currPressure = event.getPressure(event.getActionIndex());
                         System.out.println("Pressure Action Move: " + currPressure);
                         pressures[moveIndex] = currPressure;
-
+                        data_array[moveIndex] = currPressure;
+//                        data_array[25+moveIndex] = fingerSize;
+//                        data_array[moveIndex] = fingerSize;
                         //Start time/end time fill ins
 //                        startTimes[touchID] = startTime / 1000000;
                         System.out.println("Start Time: " + startTime);
@@ -606,8 +615,13 @@ public class Test extends AppCompatActivity {
                         //Test Data Calls
                         DURATIONS_STORAGE = durationTime;
 
-                        System.out.println("pressures:" + pressures[0]);
-
+                        System.out.println("pressures length:" + pressures.length);
+//                        Arrays.fill(pressures, 0.0);
+                        String press_string = "";
+                        for (int i =0; i<data_array.length; i++) {
+                            press_string += data_array[i] + ",";
+                        }
+                        System.out.println("data------------"+press_string);
 
                         break;
                     case MotionEvent.ACTION_CANCEL:
@@ -624,7 +638,7 @@ public class Test extends AppCompatActivity {
         test.setOnClickListener(new View.OnClickListener(){
             public void onClick(View view) {
                 Log.e("start", "validating");
-                validateUser();
+                validateUser2();
             }
         });
     }
@@ -651,25 +665,87 @@ public class Test extends AppCompatActivity {
         }
 
     }
+    protected void validateUser2()
+    {
+        System.out.println("Validate user here");
+        Attribute[] data = new Attribute[25];
+        for(int i =0; i<25; i++) {
+            data[i] = new Attribute("data_"+i);
+        }
+
+        Attribute aClass = new Attribute("class");
+
+        FastVector fvWekaAttributes  = new FastVector(25);
+        for(int i =0; i<25; i++) {
+            fvWekaAttributes.add(data[i]);
+        }
+
+        fvWekaAttributes.add(aClass);
+
+        Instances testSet = new Instances("gestures", fvWekaAttributes,1);
+        testSet.setClassIndex(25);
+
+        Instance testExample = new DenseInstance(25);
+        for(int i =1; i<25; i++) {
+            testExample.setValue(data[i], data_array[i]);
+        }
+
+        testSet.add(testExample);
+        try {
+            double prediction = classifier.classifyInstance(testSet.instance(0));
+
+            System.out.println("prediction ============="+prediction);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     protected void validateUser()
     {
         System.out.println("Validate user here");
+
         Attribute pressureMax1 = new Attribute("pressure_max_1");
         Attribute pressureMax2 = new Attribute("pressure_max_2");
+        Attribute pressureMin = new Attribute("pressure_min");
+        Attribute duration = new Attribute("duration");
+        Attribute cordXMax1 = new Attribute("coordinate_x_max_1");
+        Attribute cordXMax2 = new Attribute("coordinate_x_max_2");
+        Attribute cordXMin = new Attribute("coordinate_x_min");
+        Attribute cordYMax1 = new Attribute("coordinate_y_max_1");
+        Attribute cordYMax2 = new Attribute("coordinate_y_max_2");
+        Attribute cordYMin = new Attribute("coordinate_y_min");
+
         Attribute aClass = new Attribute("class");
 
-        FastVector fvWekaAttributes  = new FastVector(3);
+        FastVector fvWekaAttributes  = new FastVector(11);
         fvWekaAttributes.add(pressureMax1);
         fvWekaAttributes.add(pressureMax2);
+        fvWekaAttributes.add(pressureMin);
+        fvWekaAttributes.add(duration);
+        fvWekaAttributes.add(cordXMax1);
+        fvWekaAttributes.add(cordXMax2);
+        fvWekaAttributes.add(cordXMin);
+        fvWekaAttributes.add(cordYMax1);
+        fvWekaAttributes.add(cordYMax2);
+        fvWekaAttributes.add(cordYMin);
+
         fvWekaAttributes.add(aClass);
 
         Instances testSet = new Instances("gestures", fvWekaAttributes,1);
-        testSet.setClassIndex(2);
+        testSet.setClassIndex(10);
 
-        Instance testExample = new DenseInstance(3);
+        Instance testExample = new DenseInstance(10);
         testExample.setValue(pressureMax1, Array_Max_1(pressures));
         testExample.setValue(pressureMax2, Array_Max_2(pressures));
+        testExample.setValue(pressureMin, Array_Min(pressures));
+        testExample.setValue(duration, DURATIONS_STORAGE);
+        testExample.setValue(cordXMax1, Array_Max_1(coordX));
+        testExample.setValue(cordXMax2, Array_Max_2(coordX));
+        testExample.setValue(cordXMin, Array_Min(coordY));
+        testExample.setValue(cordYMax1, Array_Max_1(coordY));
+        testExample.setValue(cordYMax2, Array_Max_2(coordY));
+        testExample.setValue(cordYMin, Array_Min(coordY));
         testSet.add(testExample);
         try {
             double prediction = classifier.classifyInstance(testSet.instance(0));
