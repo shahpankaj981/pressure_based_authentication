@@ -6,6 +6,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.FileProvider;
 //import  weka.classifiers.;
 
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -57,6 +58,13 @@ import weka.experiment.InstanceQuery;
 import weka.filters.unsupervised.attribute.Remove;
 
 public class MainActivity extends AppCompatActivity {
+    public static final int num_folds = 2;
+    public static final int num_seeds = 1;
+    private static final int number_of_data_points = 25;
+    private static final int number_of_features = 2;
+    private static final int number_of_data = 10;
+    private static final int frequency = 100;
+
     private VelocityTracker velTracker = null;
 
     //training data storage
@@ -74,7 +82,9 @@ public class MainActivity extends AppCompatActivity {
     Classifier classifier = null;
     TextView swipe = null;
 
-    double[][] data_array = new double[10][25];
+
+
+    double[][] data_array = new double[number_of_data][number_of_features * number_of_data_points];
 
     int touchIndex = 0;
 
@@ -95,6 +105,10 @@ public class MainActivity extends AppCompatActivity {
             int moveIndex = 0;
             int newIndex = 0;
             int testCount = 0;
+            int dataCount = 0;
+            int counter = 0;
+            long swipeStartingTime = 0;
+            long swipeEndingTime = 0;
 
             //finger size
             double fingerSize = 0;
@@ -111,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
             //Pressure
             double currPressure = 0;
 
+            @SuppressLint("ClickableViewAccessibility")
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public boolean onTouch(View view, MotionEvent event) {
@@ -168,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
                         pressures[moveIndex] = currPressure;
-                        data_array[testCount][newIndex] = currPressure;
+//                        data_array[dataCount][counter++] = currPressure;
 //                        data_array[testCount][25+newIndex] = fingerSize;
 //                        data_array[testCount][newIndex] = fingerSize;
                         System.out.println("Pressure Action Down: " + currPressure);
@@ -180,8 +195,17 @@ public class MainActivity extends AppCompatActivity {
 
                         break;
                     case MotionEvent.ACTION_MOVE:
+                        if(counter == number_of_data_points) {
+                            swipeEndingTime = System.currentTimeMillis();
+                            if(swipeEndingTime-swipeStartingTime < frequency) {
+                                break;
+                            }
 
-
+                        }
+                        if(dataCount == number_of_data) {
+                            swipe.setText("Data collected..");
+                            break;
+                        }
                         //Velocity
                         velTracker.addMovement(event);
 
@@ -213,7 +237,14 @@ public class MainActivity extends AppCompatActivity {
                         //pressure
                         currPressure = event.getPressure(event.getActionIndex());
                         System.out.println("Pressure Action Move: " + currPressure);
-                        data_array[testCount][newIndex] = currPressure;
+                        data_array[dataCount][counter] = currPressure;
+                        data_array[dataCount][number_of_data_points+counter] = fingerSize;
+                        counter++;
+                        if(counter == number_of_data_points) {
+                            counter=0;
+                            dataCount++;
+                        }   
+
 //                        data_array[testCount][25+newIndex] = fingerSize;
 //                        data_array[testCount][newIndex] = fingerSize;
 
@@ -221,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
 //                        startTimes[touchID] = startTime / 1000000;
                         timeStamp[moveIndex] = System.currentTimeMillis();
                         System.out.println("Start Time: " + startTime);
+                        swipeStartingTime = System.currentTimeMillis();
 
                         //Count
                         touchIndices[moveIndex] = touchIndex;
@@ -274,9 +306,11 @@ public class MainActivity extends AppCompatActivity {
                         //Test Data Calls
                         DURATIONS_STORAGE[testCount] = durationTime;
 
-                        swipe.setText("Swipes Completed: "+ testCount);
-                        System.out.println("index: "+newIndex);
-                        System.out.println("new pressures length: "+ data_array[testCount].length);
+                        swipe.setText("Data count: "+ dataCount);
+                        System.out.println("index: "+dataCount);
+                        System.out.println("new pressures 0: "+ data_array[0]);
+                        System.out.println("new pressures 1: "+ data_array[1]);
+
 
                         newIndex = 0;
 
@@ -476,7 +510,7 @@ public class MainActivity extends AppCompatActivity {
             out2.close();
 
             Evaluation eval = new Evaluation(train);
-            eval.crossValidateModel(model, train, 2, new Random(1));
+            eval.crossValidateModel(model, train, num_folds, new Random(num_seeds));
 
             System.out.println(eval.toSummaryString("\nResults\n========\n", true));
             System.out.println(eval.fMeasure(0) + " " + eval.precision(0) + " " + eval.recall(0));
@@ -508,7 +542,7 @@ public class MainActivity extends AppCompatActivity {
         StringBuilder data = new StringBuilder();
         String head = "@RELATION gestures\n\n";
 
-        for(int i=1;i<=25;i++) {
+        for(int i=1;i<=number_of_features*number_of_data_points;i++) {
             head += "   @ATTRIBUTE data_"+i+"  NUMERIC\n";
         }
 
